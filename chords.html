@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voltage &amp; Wave — Guitar &amp; Whistle-to-Keyboard Lab</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-canvas: #0d0f12;
+      --bg-surface: #15181e;
+      --bg-elevated: #1c2028;
+      --border-subtle: #262b36;
+      --accent-amber: #f59e0b;
+      --accent-amber-bright: #fbbf24;
+      --accent-emerald: #10b981;
+      --accent-rose: #f43f5e;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-canvas);
+      color: #e4e4e7;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .card-surface {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.65);
+    }
+
+    /* Realistic Studio Piano Keybed & Ivory/Ebony Key Physics */
+    .piano-keybed-chassis {
+      background: linear-gradient(180deg, #07080a 0%, #101217 100%);
+      border: 1px solid #242832;
+      box-shadow:
+        inset 0 6px 14px rgba(0, 0, 0, 0.9),
+        0 14px 30px -10px rgba(0, 0, 0, 0.8);
+      position: relative;
+    }
+
+    /* Red/Burgundy Keybed Felt Strip along top edge of keys */
+    .piano-keybed-felt {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: linear-gradient(180deg, #450a0a 0%, #7f1d1d 55%, #2a0404 100%);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.85);
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .snap-white-key {
+      position: relative;
+      height: 100%;
+      background: linear-gradient(180deg, #dcdad5 0%, #f5f3ee 14%, #f9f8f4 78%, #e5e2db 94%, #cbc7be 100%);
+      border-left: 1px solid rgba(255, 255, 255, 0.7);
+      border-right: 1px solid #8e8b84;
+      border-bottom: 6px solid #a8a49c;
+      border-bottom-left-radius: 5px;
+      border-bottom-right-radius: 5px;
+      box-shadow:
+        inset 0 4px 6px rgba(0, 0, 0, 0.22),
+        inset 0 -2px 3px rgba(255, 255, 255, 0.6),
+        0 3px 5px rgba(0, 0, 0, 0.45);
+      transform-origin: top center;
+      transition: transform 0.06s cubic-bezier(0.2, 0.9, 0.3, 1), background 0.1s ease, box-shadow 0.08s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .snap-white-key:last-child {
+      border-right: 1px solid #6b6862;
+    }
+
+    .snap-white-key:hover {
+      background: linear-gradient(180deg, #e7e5e0 0%, #ffffff 18%, #fcfbf8 82%, #eae7e0 100%);
+    }
+
+    /* Keys belonging to the learned pattern get a warm amber-tinted ivory glow */
+    .snap-white-key.in-pattern {
+      background: linear-gradient(180deg, #e8cfa0 0%, #fef3c7 18%, #fde68a 82%, #eab308 100%);
+      border-bottom-color: #b45309;
+      box-shadow:
+        inset 0 3px 6px rgba(146, 64, 14, 0.25),
+        0 3px 8px rgba(245, 158, 11, 0.25);
+    }
+
+    .snap-white-key.in-pattern:hover {
+      background: linear-gradient(180deg, #f3dca8 0%, #fffbeb 20%, #fef08a 82%, #f59e0b 100%);
+    }
+
+    /* Active Step / Depressed White Key */
+    .snap-white-key.active-step {
+      background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 25%, #fcd34d 85%, #d97706 100%) !important;
+      border-bottom-width: 2px !important;
+      border-bottom-color: #78350f !important;
+      box-shadow:
+        inset 0 5px 10px rgba(0, 0, 0, 0.32),
+        0 0 24px rgba(245, 158, 11, 0.65) !important;
+      transform: translateY(3px) scaleY(0.992);
+      z-index: 5;
+    }
+
+    /* Realistic Beveled Ebony Sharp/Flat Keys */
+    .snap-black-key {
+      position: absolute;
+      top: 0;
+      height: 61%;
+      background: linear-gradient(180deg, #1b1d22 0%, #262930 12%, #14161a 78%, #090a0c 100%);
+      border-left: 2px solid #2e323b;
+      border-right: 2px solid #090a0d;
+      border-bottom: 7px solid #050608;
+      border-bottom-left-radius: 4px;
+      border-bottom-right-radius: 4px;
+      box-shadow:
+        -2px 5px 7px rgba(0, 0, 0, 0.65),
+        2px 5px 7px rgba(0, 0, 0, 0.65),
+        inset 0 1px 1px rgba(255, 255, 255, 0.16),
+        inset 0 -2px 2px rgba(255, 255, 255, 0.08);
+      z-index: 10;
+      transform-origin: top center;
+      transition: transform 0.06s cubic-bezier(0.2, 0.9, 0.3, 1), background 0.1s ease, box-shadow 0.08s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .snap-black-key:hover {
+      background: linear-gradient(180deg, #252830 0%, #323640 14%, #1a1c22 80%, #0d0e12 100%);
+    }
+
+    .snap-black-key.in-pattern {
+      background: linear-gradient(180deg, #78350f 0%, #92400e 16%, #5c280a 80%, #3b1805 100%);
+      border-left-color: #b45309;
+      border-right-color: #451a03;
+      border-bottom-color: #290f02;
+      box-shadow:
+        -2px 5px 7px rgba(0, 0, 0, 0.65),
+        2px 5px 7px rgba(0, 0, 0, 0.65),
+        inset 0 1px 2px rgba(251, 191, 36, 0.35);
+    }
+
+    .snap-black-key.in-pattern:hover {
+      background: linear-gradient(180deg, #92400e 0%, #b45309 16%, #78350f 80%, #451a03 100%);
+    }
+
+    /* Active Step / Depressed Ebony Key */
+    .snap-black-key.active-step {
+      background: linear-gradient(180deg, #d97706 0%, #fbbf24 22%, #f59e0b 82%, #92400e 100%) !important;
+      border-left-color: #fef3c7 !important;
+      border-right-color: #b45309 !important;
+      border-bottom-width: 2px !important;
+      border-bottom-color: #451a03 !important;
+      box-shadow:
+        0 2px 4px rgba(0, 0, 0, 0.7),
+        0 0 22px rgba(251, 191, 36, 0.75) !important;
+      transform: translateY(4px);
+      z-index: 15;
+    }
+
+    /* Live Tuner Lock Highlight on Keyboard */
+    .snap-white-key.live-tuner-note {
+      background: linear-gradient(180deg, #10b981 0%, #34d399 25%, #6ee7b7 85%, #059669 100%) !important;
+      border-bottom-width: 2px !important;
+      border-bottom-color: #064e3b !important;
+      box-shadow:
+        inset 0 4px 8px rgba(0, 0, 0, 0.25),
+        0 0 24px rgba(16, 185, 129, 0.7) !important;
+      transform: translateY(3px) scaleY(0.992);
+      z-index: 6;
+    }
+
+    .snap-black-key.live-tuner-note {
+      background: linear-gradient(180deg, #059669 0%, #34d399 22%, #10b981 82%, #065f46 100%) !important;
+      border-left-color: #a7f3d0 !important;
+      border-right-color: #047857 !important;
+      border-bottom-width: 2px !important;
+      border-bottom-color: #022c22 !important;
+      box-shadow:
+        0 2px 4px rgba(0, 0, 0, 0.7),
+        0 0 22px rgba(16, 185, 129, 0.8) !important;
+      transform: translateY(4px);
+      z-index: 16;
+    }
+
+    /* Step Cards */
+    .step-card {
+      background-color: #12151b;
+      border: 1px solid #262b36;
+      transition: all 0.14s ease;
+      cursor: pointer;
+    }
+
+    .step-card:hover {
+      border-color: #3f4759;
+      background-color: #171b23;
+    }
+
+    .step-card.is-current {
+      background-color: rgba(245, 158, 11, 0.13);
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.35), 0 8px 20px -6px rgba(245, 158, 11, 0.25);
+    }
+
+    .step-card.is-key-match {
+      border-color: #38bdf8;
+      background-color: rgba(56, 189, 248, 0.1);
+    }
+  </style>
+</head>
+<body class="p-3 sm:p-5 md:p-6 flex flex-col items-center justify-between">
+
+  <!-- Main Centered App Shell -->
+  <main class="w-full max-w-5xl flex flex-col gap-3.5">
+
+    <!-- 0. VOLTAGE & WAVE TOP HEADER -->
+    <header class="card-surface rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <a href="https://voltageandwave.co.uk" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2.5 group">
+          <div class="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/40 flex items-center justify-center font-mono text-xs font-bold text-amber-400 group-hover:bg-amber-500/25 transition">
+            V&amp;W
+          </div>
+          <div class="flex flex-col">
+            <span class="font-mono text-xs sm:text-sm font-bold tracking-wider text-zinc-100 uppercase">
+              VOLTAGE &amp; WAVE
+            </span>
+            <span class="font-mono text-[10px] text-zinc-500 tracking-wide">
+              GUITAR &amp; WHISTLE-TO-KEYBOARD LAB
+            </span>
+          </div>
+        </a>
+      </div>
+
+      <nav class="flex items-center gap-4 font-mono text-[11px] text-zinc-400">
+        <a href="https://voltageandwave.co.uk/compositions/" target="_blank" rel="noopener noreferrer" class="hover:text-amber-300 transition">
+          COMPOSITIONS
+        </a>
+        <span class="hidden sm:inline-block px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 text-[10px]">
+          POLYPHONIC v2.0
+        </span>
+      </nav>
+    </header>
+
+    <!-- 1. TUNER & RECORDER STATION (ALWAYS VISIBLE) -->
+    <section id="mic-station" class="card-surface rounded-xl p-3.5 sm:p-4 flex flex-col gap-3 border-emerald-500/30">
+      <!-- Top Row: Live Tuner + Primary Record & Tone Controls -->
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <!-- Large Real-Time Note Readout Box -->
+          <div id="tuner-note-box" class="w-16 h-14 rounded-xl bg-[#0b0d10] border border-zinc-700/90 flex flex-col items-center justify-center shrink-0 transition-colors">
+            <span id="tuner-note-name" class="font-mono text-xl font-bold text-zinc-500 leading-none">--</span>
+            <span id="tuner-freq-hz" class="font-mono text-[10px] text-zinc-500 mt-1">0.0 Hz</span>
+          </div>
+
+          <!-- Cents Deviation Meter & Input Clarity Bar -->
+          <div class="flex flex-col gap-1.5 min-w-[200px] sm:min-w-[270px]">
+            <div class="flex items-center justify-between font-mono text-[10px]">
+              <span class="text-zinc-500">-50c</span>
+              <span id="tuner-cents-label" class="text-zinc-400 font-bold truncate max-w-[180px] text-center">TUNER STANDBY</span>
+              <span class="text-zinc-500">+50c</span>
+            </div>
+
+            <!-- Horizontal Cents Track -->
+            <div class="relative w-full h-3.5 bg-[#0b0d10] border border-zinc-800 rounded-full overflow-hidden">
+              <div class="absolute top-0 bottom-0 left-[38%] right-[38%] bg-emerald-500/15 border-x border-emerald-500/40"></div>
+              <div class="absolute top-0 bottom-0 left-1/2 w-[1.5px] -translate-x-1/2 bg-emerald-400/70"></div>
+              <div id="tuner-needle" style="left: 50%;" class="absolute top-0.5 bottom-0.5 w-2.5 -translate-x-1/2 rounded-full bg-zinc-600 transition-[left] duration-75"></div>
+            </div>
+
+            <!-- Input Level & Clarity Meter -->
+            <div class="flex items-center gap-2 font-mono text-[10px] text-zinc-500">
+              <span>SIGNAL</span>
+              <div class="flex-1 h-1.5 bg-[#0b0d10] rounded-full overflow-hidden border border-zinc-800/80">
+                <div id="tuner-signal-bar" style="width: 0%;" class="h-full bg-emerald-500 transition-[width] duration-75"></div>
+              </div>
+              <span id="tuner-clarity-text">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary Action Buttons -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <button id="btn-mic-tuner-only" type="button" class="px-3 py-2.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-bold flex items-center gap-1.5 transition cursor-pointer" title="Activate live tuner without recording">
+            <span id="tuner-live-dot" class="w-2 h-2 rounded-full bg-zinc-500"></span>
+            <span id="tuner-live-label">LIVE TUNER</span>
+          </button>
+
+          <button id="btn-mic-record" type="button" class="px-4 py-2.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/60 text-rose-200 font-mono text-xs font-bold flex items-center gap-2 transition cursor-pointer">
+            <span id="rec-dot" class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+            <span id="rec-btn-label">PLAY &amp; RECORD</span>
+          </button>
+
+          <button id="btn-mic-use-pattern" type="button" class="hidden px-3.5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono text-xs font-bold transition cursor-pointer">
+            TRANSLATE NOW
+          </button>
+
+          <button id="btn-mic-clear" type="button" class="px-3 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-zinc-200 font-mono text-xs transition cursor-pointer">
+            CLEAR
+          </button>
+
+          <button id="btn-toggle-tone" type="button" class="px-3 py-2.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/50 text-amber-300 font-mono text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer">
+            <span id="tone-led" class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span id="tone-label">TONE: ON</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Second Row: Capture Settings (Input Mode, Octave Shift, Gate & Re-articulation) -->
+      <div class="flex flex-wrap items-center justify-between gap-2.5 bg-[#0f1115] border border-zinc-800/90 rounded-lg px-3 py-2 font-mono text-[11px]">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-1.5">
+            <label for="select-input-mode" class="text-zinc-500">INPUT MODE:</label>
+            <select id="select-input-mode" class="bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded px-2 py-1 text-sky-300 font-semibold outline-none cursor-pointer">
+              <option value="guitar-chord" selected>GUITAR CHORDS (POLYPHONIC)</option>
+              <option value="guitar-single">GUITAR SINGLE NOTES (MONO)</option>
+              <option value="whistle">WHISTLE / VOCAL (MONO)</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <label for="select-whistle-octave" class="text-zinc-500">OCTAVE SHIFT:</label>
+            <select id="select-whistle-octave" class="bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded px-2 py-1 text-emerald-300 font-semibold outline-none cursor-pointer">
+              <option value="0" selected>0 OCT (CONCERT / GUITAR)</option>
+              <option value="-12">-1 OCT (SYNTH LEAD)</option>
+              <option value="-24">-2 OCT (BASSLINE)</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <label for="select-capture-feel" class="text-zinc-500">NOTE GATE:</label>
+            <select id="select-capture-feel" class="bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded px-2 py-1 text-amber-300 font-semibold outline-none cursor-pointer">
+              <option value="fast">FAST / LEGATO (65ms)</option>
+              <option value="balanced" selected>BALANCED (95ms)</option>
+              <option value="steady">STEADY (140ms)</option>
+            </select>
+          </div>
+
+          <label class="flex items-center gap-1.5 text-zinc-300 cursor-pointer select-none">
+            <input id="chk-rearticulate-breath" type="checkbox" checked class="accent-emerald-500 rounded cursor-pointer" />
+            <span>RE-ARTICULATE STRUMS</span>
+          </label>
+
+          <button id="btn-mic-monitor" type="button" class="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-400 font-mono text-[10px] transition cursor-pointer" title="Play synth tone while playing">
+            MONITOR: OFF
+          </button>
+        </div>
+
+        <span id="mic-status-hint" class="text-zinc-500 text-[10px]">
+          Strum chords or pluck single notes — click any captured pill to remove it.
+        </span>
+      </div>
+
+      <!-- Third Row: Live Captured Note / Chord Pills Strip -->
+      <div class="flex items-center gap-2 bg-[#0b0d10] border border-zinc-800/90 rounded-lg px-3 py-2 min-h-[42px] overflow-x-auto">
+        <span class="font-mono text-[10px] font-bold text-zinc-500 shrink-0">CAPTURED:</span>
+        <div id="whistle-captured-pills" class="flex items-center gap-1.5 flex-wrap">
+          <span class="font-mono text-xs text-zinc-600 italic">Click PLAY &amp; RECORD and strum guitar chords or play single notes...</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. KEYBOARD SNAPSHOT & STEP SEQUENCE CARD -->
+    <section class="card-surface rounded-xl p-4 sm:p-5 flex flex-col gap-4">
+
+      <!-- Pattern Header: Title, Scale Pill, Span & Active Keys -->
+      <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-zinc-800/90 pb-3">
+        <div class="flex flex-wrap items-center gap-2.5">
+          <h1 id="pattern-title" class="text-base sm:text-lg font-bold tracking-tight text-zinc-100">
+            Starter Motif (Play or Strum to Replace)
+          </h1>
+          <span id="pattern-scale-badge" class="px-2.5 py-0.5 rounded-md bg-sky-500/15 border border-sky-500/35 text-sky-300 font-mono text-xs font-semibold">
+            E Minor
+          </span>
+          <span id="pattern-span-label" class="font-mono text-xs text-zinc-400">
+            SPAN: E3 – B3
+          </span>
+        </div>
+
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="font-mono text-[11px] text-zinc-500 mr-1">KEYS USED:</span>
+          <div id="keys-used-pills" class="flex items-center gap-1.5 flex-wrap"></div>
+        </div>
+      </div>
+
+      <!-- 2A. BIRD'S-EYE CONTEXT STRIP -->
+      <div class="flex flex-col gap-1.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 font-mono text-[11px]">
+            <span class="text-zinc-500 font-semibold">BIRD'S-EYE CONTEXT</span>
+            <span id="register-label" class="text-amber-400/90 font-semibold">LOW-MID REGISTER (C2 – C7)</span>
+          </div>
+          <button id="btn-toggle-birdseye" type="button" class="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 font-mono text-[10px] font-semibold transition cursor-pointer">
+            61-KEY
+          </button>
+        </div>
+
+        <div id="birdseye-container" class="relative w-full h-11 bg-[#0b0d10] border border-zinc-800 rounded-lg overflow-hidden select-none">
+          <!-- Rendered dynamically by JS -->
+        </div>
+      </div>
+
+      <!-- 2B. CROPPED SNAPSHOT KEYBOARD -->
+      <div class="piano-keybed-chassis w-full h-48 sm:h-60 rounded-xl pt-1.5 px-1.5 pb-2">
+        <div class="piano-keybed-felt rounded-t-xl"></div>
+        <div id="cropped-keyboard" class="relative w-full h-full rounded-b-lg overflow-hidden">
+          <!-- Rendered dynamically by JS -->
+        </div>
+      </div>
+
+      <!-- 3. HOW TO PLAY // STEP SEQUENCE STRIP -->
+      <div class="flex flex-col gap-2.5 pt-1">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2 font-mono text-xs">
+            <span class="text-zinc-400 font-semibold">HOW TO PLAY // STEP SEQUENCE</span>
+            <span id="step-counter-label" class="text-amber-400 font-bold">STEP 1 / 4</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="btn-play-pattern" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-bold flex items-center gap-1.5 transition cursor-pointer">
+              <span id="pattern-play-icon">&#9654;</span>
+              <span id="pattern-play-label">PLAY PATTERN</span>
+            </button>
+            <button id="btn-step-reset" type="button" class="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 font-mono text-xs font-semibold transition cursor-pointer">
+              RESET
+            </button>
+            <button id="btn-step-next" type="button" class="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono text-xs font-bold flex items-center gap-2 shadow-[0_0_16px_rgba(245,158,11,0.3)] transition cursor-pointer">
+              <span>NEXT STEP</span>
+              <span class="px-1.5 py-0.5 rounded bg-zinc-950/20 text-[10px]">SPACE</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="step-cards-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2">
+          <!-- Step cards rendered dynamically by JS -->
+        </div>
+      </div>
+
+      <!-- Footer Status Line -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-800/70 font-mono text-[11px] text-zinc-500">
+        <span id="status-line">Click any key to hear &amp; highlight matching steps, or press SPACE to step forward.</span>
+        <span>KEYS: [SPACE / &rarr;] NEXT &middot; [&larr;] PREV &middot; [R] RESET</span>
+      </div>
+    </section>
+
+    <!-- 3. VOLTAGE & WAVE SITE FOOTER -->
+    <footer class="w-full px-2 py-3 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] text-zinc-500">
+      <div class="flex items-center gap-2">
+        <span>&copy; 2026 <a href="https://voltageandwave.co.uk" target="_blank" rel="noopener noreferrer" class="text-zinc-300 hover:text-amber-300 transition">Voltage &amp; Wave</a> &amp; <span class="text-zinc-300">Jos&eacute; Vel&aacute;zquez</span>. All rights reserved.</span>
+      </div>
+      <div class="flex items-center gap-3 text-[10px]">
+        <a href="https://voltageandwave.co.uk" target="_blank" rel="noopener noreferrer" class="hover:text-amber-300 transition">voltageandwave.co.uk</a>
+        <span>&middot;</span>
+        <span>HYBRID YIN + POLYPHONIC FFT ENGINE</span>
+      </div>
+    </footer>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // 1. MUSIC THEORY & NOTE UTILITIES
+    // =========================================================================
+    const NOTE_NAMES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const BLACK_PITCH_CLASSES = new Set([1, 3, 6, 8, 10]);
+
+    function isBlackKey(midi) {
+      return BLACK_PITCH_CLASSES.has(((midi % 12) + 12) % 12);
+    }
+
+    function midiToNoteName(midi) {
+      const pc = ((midi % 12) + 12) % 12;
+      const octave = Math.floor(midi / 12) - 1;
+      return `${NOTE_NAMES_SHARP[pc]}${octave}`;
+    }
+
+    function midiToFreq(midi) {
+      return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    function noteNameToMidi(str) {
+      if (!str) return null;
+      const match = str.trim().match(/^([A-Ga-g])([#b]?)(-?\d+)$/);
+      if (!match) return null;
+      const baseMap = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+      let pc = baseMap[match[1].toUpperCase()];
+      if (match[2] === '#') pc += 1;
+      if (match[2] === 'b') pc -= 1;
+      return (parseInt(match[3], 10) + 1) * 12 + pc;
+    }
+
+    function getScaleDegreeLabel(midi, rootMidi) {
+      const diff = (((midi - rootMidi) % 12) + 12) % 12;
+      const map = {
+        0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4',
+        6: 'b5', 7: '5', 8: 'b6', 9: '6', 10: 'b7', 11: '7'
+      };
+      return map[diff] || '';
+    }
+
+    function inferScaleAndRoot(midis) {
+      if (!midis || midis.length === 0) return { scale: 'C Major', rootMidi: 60 };
+      const counts = new Array(12).fill(0);
+      midis.forEach(m => { counts[((m % 12) + 12) % 12] += 1; });
+
+      const firstPc = ((midis[0] % 12) + 12) % 12;
+      counts[firstPc] += 1.5;
+
+      const templates = [
+        { name: 'Minor', intervals: [0, 2, 3, 5, 7, 8, 10] },
+        { name: 'Dorian', intervals: [0, 2, 3, 5, 7, 9, 10] },
+        { name: 'Major', intervals: [0, 2, 4, 5, 7, 9, 11] },
+        { name: 'Phrygian', intervals: [0, 1, 3, 5, 7, 8, 10] }
+      ];
+
+      let bestScore = -Infinity;
+      let bestRootPc = firstPc;
+      let bestScaleName = 'Minor';
+
+      for (let root = 0; root < 12; root++) {
+        for (const tpl of templates) {
+          const allowed = new Set(tpl.intervals.map(i => (root + i) % 12));
+          let score = counts[root] * 1.4;
+          for (let pc = 0; pc < 12; pc++) {
+            score += allowed.has(pc) ? counts[pc] : -counts[pc] * 1.2;
+          }
+          if (score > bestScore) {
+            bestScore = score;
+            bestRootPc = root;
+            bestScaleName = tpl.name;
+          }
+        }
+      }
+
+      const matching = midis.filter(m => (((m % 12) + 12) % 12) === bestRootPc).sort((a, b) => a - b);
+      const rootMidi = matching.length > 0 ? matching[0] : (48 + bestRootPc);
+      return { scale: `${NOTE_NAMES_SHARP[bestRootPc]} ${bestScaleName}`, rootMidi };
+    }
+
+    // =========================================================================
+    // 2. WARM SYNTHESIZER ENGINE
+    // =========================================================================
+    class WarmSynthEngine {
+      constructor() {
+        this.ctx = null;
+        this.patternTimer = null;
+        this.isPlayingPattern = false;
+      }
+
+      async ensureContext() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioCtx();
+        }
+        if (this.ctx.state === 'suspended') {
+          try { await this.ctx.resume(); } catch (e) {}
+        }
+        return this.ctx;
+      }
+
+      async playNotes(midis, duration = 0.42) {
+        if (!state.auditionEnabled || !midis || midis.length === 0) return;
+        const ctx = await this.ensureContext();
+        const now = ctx.currentTime;
+
+        const masterGain = ctx.createGain();
+        const perVoiceGain = 0.28 / Math.sqrt(midis.length);
+        masterGain.gain.setValueAtTime(0.0001, now);
+        masterGain.gain.exponentialRampToValueAtTime(perVoiceGain, now + 0.015);
+        masterGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1850, now);
+        filter.frequency.exponentialRampToValueAtTime(560, now + duration);
+        filter.Q.value = 1.6;
+
+        filter.connect(masterGain);
+        masterGain.connect(ctx.destination);
+
+        midis.forEach(midi => {
+          const freq = midiToFreq(midi);
+
+          const oscTri = ctx.createOscillator();
+          oscTri.type = 'triangle';
+          oscTri.frequency.setValueAtTime(freq, now);
+
+          const oscSaw = ctx.createOscillator();
+          oscSaw.type = 'sawtooth';
+          oscSaw.frequency.setValueAtTime(freq * 1.002, now);
+
+          const sawGain = ctx.createGain();
+          sawGain.gain.value = 0.28;
+
+          oscTri.connect(filter);
+          oscSaw.connect(sawGain);
+          sawGain.connect(filter);
+
+          oscTri.start(now);
+          oscSaw.start(now);
+          oscTri.stop(now + duration + 0.02);
+          oscSaw.stop(now + duration + 0.02);
+        });
+      }
+
+      async playSequenceOnce(stepIntervalMs = 420) {
+        this.stopPatternPlayback();
+        if (!state.stepNotes || state.stepNotes.length === 0) return;
+
+        await this.ensureContext();
+        this.isPlayingPattern = true;
+        this.updatePlayButtonUI(true);
+
+        let stepIdx = 0;
+        const triggerStep = () => {
+          if (!this.isPlayingPattern) return;
+          if (stepIdx >= state.stepNotes.length) {
+            this.stopPatternPlayback();
+            state.activeStepIndex = 0;
+            highlightCurrentStep(false);
+            return;
+          }
+          state.activeStepIndex = stepIdx;
+          highlightCurrentStep(true);
+          stepIdx++;
+        };
+
+        triggerStep();
+        this.patternTimer = setInterval(triggerStep, stepIntervalMs);
+      }
+
+      stopPatternPlayback() {
+        this.isPlayingPattern = false;
+        if (this.patternTimer) {
+          clearInterval(this.patternTimer);
+          this.patternTimer = null;
+        }
+        this.updatePlayButtonUI(false);
+      }
+
+      updatePlayButtonUI(playing) {
+        const icon = document.getElementById('pattern-play-icon');
+        const lbl = document.getElementById('pattern-play-label');
+        const btn = document.getElementById('btn-play-pattern');
+        if (!icon || !lbl || !btn) return;
+
+        if (playing) {
+          icon.innerHTML = '&#9632;';
+          lbl.textContent = 'STOP';
+          btn.className = 'px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/60 text-rose-300 font-mono text-xs font-bold flex items-center gap-1.5 transition cursor-pointer';
+        } else {
+          icon.innerHTML = '&#9654;';
+          lbl.textContent = 'PLAY PATTERN';
+          btn.className = 'px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-bold flex items-center gap-1.5 transition cursor-pointer';
+        }
+      }
+    }
+
+    const synth = new WarmSynthEngine();
+
+    // =========================================================================
+    // 3. APPLICATION STATE & STARTER MOTIF
+    // =========================================================================
+    const STARTER_MOTIF = {
+      title: 'Starter Motif (Play or Strum to Replace)',
+      scale: 'E Minor',
+      rootNote: 'E3',
+      steps: [['E3', 'G3', 'B3'], ['A3', 'C4', 'E4'], ['B3', 'D4', 'F#4'], ['E3', 'G3', 'B3']]
+    };
+
+    const EMPTY_PATTERN = {
+      title: 'Ready — Strum Chords or Play a Melody',
+      scale: 'No Pattern',
+      rootNote: null,
+      steps: []
+    };
+
+    const state = {
+      pattern: null,
+      stepNotes: [],
+      flatMidis: [],
+      rootMidi: 52,
+      minMidi: 50,
+      maxMidi: 60,
+      activeStepIndex: 0,
+      auditionEnabled: true,
+      birdseyeMode: '61',
+      liveTunerMidis: []
+    };
+
+    // =========================================================================
+    // 4. KEYBOARD SNAPSHOT & STEP SEQUENCE RENDERING
+    // =========================================================================
+    function loadPattern(patternObj) {
+      state.pattern = patternObj;
+
+      const parsedSteps = (patternObj.steps || []).map(stepGroup => {
+        const arr = Array.isArray(stepGroup) ? stepGroup : [stepGroup];
+        return arr.map(n => noteNameToMidi(n)).filter(m => m !== null).sort((a, b) => a - b);
+      }).filter(arr => arr.length > 0);
+
+      if (parsedSteps.length === 0) {
+        state.stepNotes = [];
+        state.flatMidis = [];
+        state.activeStepIndex = 0;
+        state.rootMidi = 60;
+        state.minMidi = 40; // Neutral E2 - E4 guitar/piano overview
+        state.maxMidi = 64;
+
+        document.getElementById('pattern-title').textContent = patternObj.title || 'Ready — Strum Chords or Play a Melody';
+        document.getElementById('pattern-scale-badge').textContent = patternObj.scale || 'No Pattern';
+        document.getElementById('pattern-span-label').textContent = 'SPAN: E2 – E4 (IDLE)';
+        document.getElementById('keys-used-pills').innerHTML =
+          `<span class="font-mono text-[11px] text-zinc-600 italic">None</span>`;
+        document.getElementById('step-counter-label').textContent = 'STEP 0 / 0';
+
+        renderBirdsEyeStrip();
+        renderCroppedKeyboard();
+        renderStepSequenceCards();
+        return;
+      }
+
+      state.stepNotes = parsedSteps;
+      state.flatMidis = parsedSteps.flat();
+      state.activeStepIndex = 0;
+
+      const parsedRoot = noteNameToMidi(patternObj.rootNote);
+      state.rootMidi = parsedRoot !== null ? parsedRoot : Math.min(...state.flatMidis);
+
+      const rawMin = Math.min(...state.flatMidis);
+      const rawMax = Math.max(...state.flatMidis);
+
+      let cropMin = Math.max(21, rawMin - 1);
+      let cropMax = Math.min(108, rawMax + 1);
+      if (isBlackKey(cropMin) && cropMin > 21) cropMin -= 1;
+      if (isBlackKey(cropMax) && cropMax < 108) cropMax += 1;
+
+      state.minMidi = cropMin;
+      state.maxMidi = cropMax;
+
+      document.getElementById('pattern-title').textContent = patternObj.title;
+      document.getElementById('pattern-scale-badge').textContent = patternObj.scale || 'Custom Pattern';
+      document.getElementById('pattern-span-label').textContent =
+        `SPAN: ${midiToNoteName(rawMin)} – ${midiToNoteName(rawMax)}`;
+
+      const uniqueMidis = Array.from(new Set(state.flatMidis)).sort((a, b) => a - b);
+      const pillsHost = document.getElementById('keys-used-pills');
+      pillsHost.innerHTML = uniqueMidis.map(m => {
+        const isRoot = (((m - state.rootMidi) % 12) + 12) % 12 === 0;
+        const label = midiToNoteName(m);
+        return isRoot
+          ? `<span class="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/50 text-amber-300 font-mono text-[11px] font-bold">${label} (R)</span>`
+          : `<span class="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-300 font-mono text-[11px]">${label}</span>`;
+      }).join('');
+
+      renderBirdsEyeStrip();
+      renderCroppedKeyboard();
+      renderStepSequenceCards();
+      highlightCurrentStep(false);
+    }
+
+    function renderBirdsEyeStrip() {
+      const container = document.getElementById('birdseye-container');
+      const startMidi = state.birdseyeMode === '88' ? 21 : 36;
+      const endMidi = state.birdseyeMode === '88' ? 108 : 96;
+
+      const avgMidi = state.flatMidis.length > 0
+        ? state.flatMidis.reduce((a, b) => a + b, 0) / state.flatMidis.length
+        : 54;
+      let regName = 'MID REGISTER';
+      if (state.flatMidis.length === 0) regName = 'NEUTRAL OVERVIEW';
+      else if (avgMidi < 45) regName = 'BASS / LOW REGISTER';
+      else if (avgMidi < 60) regName = 'LOW-MID REGISTER';
+      else if (avgMidi > 74) regName = 'HIGH / LEAD REGISTER';
+
+      document.getElementById('register-label').textContent =
+        `${regName} (${midiToNoteName(startMidi)} – ${midiToNoteName(endMidi)})`;
+      document.getElementById('btn-toggle-birdseye').textContent =
+        state.birdseyeMode === '88' ? '88-KEY' : '61-KEY';
+
+      const whiteKeys = [];
+      for (let m = startMidi; m <= endMidi; m++) {
+        if (!isBlackKey(m)) whiteKeys.push(m);
+      }
+
+      const activeSet = new Set(state.flatMidis);
+      const liveSet = new Set(state.liveTunerMidis || []);
+      const whiteWidthPct = 100 / whiteKeys.length;
+
+      let html = `<div class="relative w-full h-full flex">`;
+      whiteKeys.forEach(m => {
+        const isUsed = activeSet.has(m);
+        const isLive = liveSet.has(m);
+        const isC = (m % 12) === 0;
+        const bgClass = isLive ? 'bg-emerald-400' : isUsed ? 'bg-amber-500/80' : 'bg-zinc-800/45';
+        html += `<div style="width:${whiteWidthPct}%" class="h-full border-r border-zinc-900/90 flex items-end justify-center pb-0.5 ${bgClass}">
+          ${isC ? `<span class="font-mono text-[8px] ${(isUsed || isLive) ? 'text-zinc-950 font-bold' : 'text-zinc-500'}">${midiToNoteName(m)}</span>` : ''}
+        </div>`;
+      });
+      html += `</div>`;
+
+      for (let m = startMidi; m <= endMidi; m++) {
+        if (!isBlackKey(m)) continue;
+        const leftWhites = whiteKeys.filter(w => w < m).length;
+        const leftPct = (leftWhites - 0.32) * whiteWidthPct;
+        const widthPct = whiteWidthPct * 0.64;
+        const isUsed = activeSet.has(m);
+        const isLive = liveSet.has(m);
+        const bgClass = isLive ? 'bg-emerald-300' : isUsed ? 'bg-amber-300' : 'bg-zinc-950';
+        html += `<div style="left:${leftPct}%;width:${widthPct}%" class="absolute top-0 h-[58%] rounded-b-[2px] border border-zinc-950 ${bgClass}"></div>`;
+      }
+
+      const clampedMin = Math.max(startMidi, Math.min(endMidi, state.minMidi));
+      const clampedMax = Math.max(startMidi, Math.min(endMidi, state.maxMidi));
+      const firstWhiteIdx = Math.max(0, whiteKeys.findIndex(w => w >= clampedMin));
+      let lastWhiteIdx = whiteKeys.findIndex(w => w >= clampedMax);
+      if (lastWhiteIdx === -1) lastWhiteIdx = whiteKeys.length - 1;
+
+      const boxLeftPct = firstWhiteIdx * whiteWidthPct;
+      const boxWidthPct = Math.max(whiteWidthPct, (lastWhiteIdx - firstWhiteIdx + 1) * whiteWidthPct);
+
+      html += `<div style="left:${boxLeftPct}%;width:${boxWidthPct}%" class="absolute top-0 bottom-0 border-2 border-amber-400 bg-amber-400/10 rounded pointer-events-none shadow-[0_0_12px_rgba(245,158,11,0.4)]"></div>`;
+      container.innerHTML = html;
+    }
+
+    function renderCroppedKeyboard() {
+      const container = document.getElementById('cropped-keyboard');
+      const patternSet = new Set(state.flatMidis);
+      const hasPattern = state.flatMidis.length > 0;
+
+      const whiteKeys = [];
+      for (let m = state.minMidi; m <= state.maxMidi; m++) {
+        if (!isBlackKey(m)) whiteKeys.push(m);
+      }
+
+      const whiteWidthPct = 100 / whiteKeys.length;
+      let html = `<div class="relative w-full h-full flex">`;
+
+      whiteKeys.forEach(m => {
+        const inPattern = hasPattern && patternSet.has(m);
+        const isRoot = inPattern && ((((m - state.rootMidi) % 12) + 12) % 12 === 0);
+        const noteLabel = midiToNoteName(m);
+
+        html += `
+          <div data-midi="${m}" style="width:${whiteWidthPct}%" class="snap-white-key ${inPattern ? 'in-pattern' : ''} flex flex-col items-center justify-end pb-2.5 sm:pb-3">
+            ${isRoot ? `<span class="key-root-tag px-1.5 py-0.2 rounded bg-amber-900/85 text-amber-200 font-mono text-[8px] font-bold tracking-wider mb-1">ROOT</span>` : ''}
+            <span class="key-note-tag font-mono text-xs sm:text-sm font-bold ${inPattern ? 'text-amber-950' : 'text-zinc-500'}">${noteLabel}</span>
+          </div>
+        `;
+      });
+      html += `</div>`;
+
+      for (let m = state.minMidi; m <= state.maxMidi; m++) {
+        if (!isBlackKey(m)) continue;
+        const leftWhites = whiteKeys.filter(w => w < m).length;
+        const leftPct = (leftWhites - 0.30) * whiteWidthPct;
+        const widthPct = whiteWidthPct * 0.60;
+        const inPattern = hasPattern && patternSet.has(m);
+        const isRoot = inPattern && ((((m - state.rootMidi) % 12) + 12) % 12 === 0);
+        const noteLabel = midiToNoteName(m);
+
+        html += `
+          <div data-midi="${m}" style="left:${leftPct}%;width:${widthPct}%" class="snap-black-key ${inPattern ? 'in-pattern' : ''} flex flex-col items-center justify-end pb-2">
+            ${isRoot ? `<span class="key-root-tag font-mono text-[8px] font-bold text-amber-300 mb-0.5">R</span>` : ''}
+            <span class="key-note-tag font-mono text-[10px] sm:text-xs font-bold ${inPattern ? 'text-amber-200' : 'text-zinc-400'}">${noteLabel}</span>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+
+      container.querySelectorAll('[data-midi]').forEach(keyEl => {
+        keyEl.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          const midi = parseInt(keyEl.getAttribute('data-midi'), 10);
+          handleKeyPress(midi);
+        });
+      });
+    }
+
+    function renderStepSequenceCards() {
+      const grid = document.getElementById('step-cards-grid');
+      if (state.stepNotes.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full rounded-xl border border-dashed border-zinc-800 bg-[#101318] py-5 px-4 text-center font-mono text-xs text-zinc-500">
+            Keyboard cleared — click <span class="text-rose-300 font-semibold">PLAY &amp; RECORD</span> above to capture chords or single notes.
+          </div>
+        `;
+        return;
+      }
+      const spanRange = Math.max(1, state.maxMidi - state.minMidi);
+
+      grid.innerHTML = state.stepNotes.map((midis, idx) => {
+        const names = midis.map(m => midiToNoteName(m)).join('+');
+        const degrees = midis.map(m => getScaleDegreeLabel(m, state.rootMidi)).join('/');
+        const avgMidi = midis.reduce((a, b) => a + b, 0) / midis.length;
+        const posPct = Math.max(8, Math.min(92, ((avgMidi - state.minMidi) / spanRange) * 100));
+
+        return `
+          <div data-step-index="${idx}" class="step-card rounded-xl p-2.5 flex flex-col justify-between gap-2 min-h-[76px]">
+            <div class="flex items-center justify-between font-mono text-[10px]">
+              <span class="text-zinc-500 font-bold">${idx + 1}</span>
+              <span class="text-amber-400/90 font-semibold">${degrees}</span>
+            </div>
+            <div class="text-center font-mono text-xs sm:text-sm font-bold text-zinc-100 tracking-tight truncate" title="${names}">
+              ${names}
+            </div>
+            <div class="relative w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+              <div style="left:calc(${posPct}% - 6px)" class="absolute top-0 bottom-0 w-3 rounded-full bg-amber-400"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      grid.querySelectorAll('[data-step-index]').forEach(card => {
+        card.addEventListener('click', () => {
+          const idx = parseInt(card.getAttribute('data-step-index'), 10);
+          state.activeStepIndex = idx;
+          highlightCurrentStep(true);
+        });
+      });
+    }
+
+    function highlightCurrentStep(playAudio = true) {
+      const total = state.stepNotes.length;
+      if (total === 0) return;
+
+      const idx = ((state.activeStepIndex % total) + total) % total;
+      state.activeStepIndex = idx;
+      const activeMidis = state.stepNotes[idx];
+      const activeSet = new Set(activeMidis);
+
+      document.getElementById('step-counter-label').textContent = `STEP ${idx + 1} / ${total}`;
+
+      document.querySelectorAll('#cropped-keyboard [data-midi]').forEach(keyEl => {
+        const midi = parseInt(keyEl.getAttribute('data-midi'), 10);
+        const isCurrent = activeSet.has(midi);
+        keyEl.classList.toggle('active-step', isCurrent);
+
+        const noteTag = keyEl.querySelector('.key-note-tag');
+        if (noteTag) noteTag.classList.toggle('text-zinc-950', isCurrent);
+      });
+
+      document.querySelectorAll('#step-cards-grid [data-step-index]').forEach(card => {
+        const cardIdx = parseInt(card.getAttribute('data-step-index'), 10);
+        card.classList.remove('is-key-match');
+        card.classList.toggle('is-current', cardIdx === idx);
+      });
+
+      if (playAudio) synth.playNotes(activeMidis);
+    }
+
+    function handleKeyPress(midi) {
+      synth.playNotes([midi]);
+
+      const keyEl = document.querySelector(`#cropped-keyboard [data-midi="${midi}"]`);
+      if (keyEl) {
+        keyEl.classList.add('active-step');
+        setTimeout(() => {
+          const currentMidis = state.stepNotes[state.activeStepIndex] || [];
+          if (!currentMidis.includes(midi)) keyEl.classList.remove('active-step');
+        }, 180);
+      }
+
+      let matchCount = 0;
+      document.querySelectorAll('#step-cards-grid [data-step-index]').forEach(card => {
+        const cardIdx = parseInt(card.getAttribute('data-step-index'), 10);
+        const usesMidi = (state.stepNotes[cardIdx] || []).includes(midi);
+        card.classList.toggle('is-key-match', usesMidi);
+        if (usesMidi) matchCount++;
+      });
+
+      const noteName = midiToNoteName(midi);
+      document.getElementById('status-line').textContent = matchCount > 0
+        ? `Key ${noteName} is played in ${matchCount} step${matchCount > 1 ? 's' : ''} of this pattern.`
+        : `Key ${noteName} is outside the active pattern.`;
+    }
+
+    // =========================================================================
+    // 5. HYBRID MONOPHONIC (YIN) & POLYPHONIC GUITAR CHORD ENGINE
+    // =========================================================================
+    class WhistleTunerRecorder {
+      constructor() {
+        this.stream = null;
+        this.analyser = null;
+        this.sourceNode = null;
+        this.timeDomainBuf = null;
+        this.freqDomainBuf = null;
+        this.yinBuf = null;
+        this.rafId = null;
+        this.isListening = false;
+        this.isRecording = false;
+        this.monitorEnabled = false;
+
+        // Segmentation & Strum Grouping State
+        this.candidateChordKey = null;
+        this.candidateMidis = [];
+        this.candidateStartTime = 0;
+        this.silenceStartTime = null;
+        this.lastCommittedKey = null;
+        this.hasReattackedSinceCommit = true;
+        this.prevRms = 0;
+        this.peakRmsSinceCommit = 0;
+        this.minRmsSincePeak = 1;
+        this.lastMonitorKey = null;
+        this.capturedSteps = []; // Array of MIDI arrays, e.g. [[40, 47, 52], [45, 52]]
+      }
+
+      async startMic() {
+        if (this.isListening) return true;
+        const ctx = await synth.ensureContext();
+        const statusHint = document.getElementById('mic-status-hint');
+
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('Browser microphone API unavailable (requires HTTPS or localhost)');
+          }
+          try {
+            this.stream = await navigator.mediaDevices.getUserMedia({
+              audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+            });
+          } catch (constraintErr) {
+            this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          }
+
+          this.sourceNode = ctx.createMediaStreamSource(this.stream);
+          this.analyser = ctx.createAnalyser();
+          // 8192 FFT gives ~5.38 Hz bin spacing at 44.1kHz—essential for separating low guitar notes
+          this.analyser.fftSize = 8192;
+          this.analyser.smoothingTimeConstant = 0.15;
+          this.sourceNode.connect(this.analyser);
+
+          this.timeDomainBuf = new Float32Array(this.analyser.fftSize);
+          this.freqDomainBuf = new Float32Array(this.analyser.frequencyBinCount);
+          this.yinBuf = new Float32Array(this.analyser.fftSize / 2);
+          this.isListening = true;
+
+          const tunerBtn = document.getElementById('btn-mic-tuner-only');
+          const tunerDot = document.getElementById('tuner-live-dot');
+          const tunerLbl = document.getElementById('tuner-live-label');
+          if (tunerBtn && tunerDot && tunerLbl) {
+            tunerBtn.className = 'px-3 py-2.5 rounded-lg bg-emerald-500/25 border border-emerald-400 text-emerald-200 font-mono text-xs font-bold flex items-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.25)] transition cursor-pointer';
+            tunerDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+            tunerLbl.textContent = 'TUNER: LIVE';
+          }
+
+          statusHint.textContent = 'Tuner live — strum chords or play single notes cleanly.';
+          this.loop();
+          return true;
+        } catch (err) {
+          statusHint.textContent = `Microphone unavailable (${err.message || 'check permissions'}).`;
+          return false;
+        }
+      }
+
+      computeRms(buf) {
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+        return Math.sqrt(sum / buf.length);
+      }
+
+      // MONOPHONIC YIN DETECTOR (Tuned for both Whistle and Low-E Guitar)
+      detectYinPitch(buf, sampleRate, isGuitar) {
+        const halfLen = this.yinBuf.length;
+        const rms = this.computeRms(buf);
+        const minRms = isGuitar ? 0.005 : 0.008;
+        if (rms < minRms) return null;
+
+        // Guitar reaches down to E2 (82.4Hz) / Drop D2 (73.4Hz); Whistle starts higher
+        const minFreq = isGuitar ? 65 : 180;
+        const maxFreq = isGuitar ? 1400 : 3200;
+
+        const minTau = Math.max(2, Math.floor(sampleRate / maxFreq));
+        const maxTau = Math.min(halfLen - 2, Math.floor(sampleRate / minFreq));
+        this.yinBuf[0] = 1;
+        let runningSum = 0;
+
+        for (let tau = 1; tau <= maxTau; tau++) {
+          let diff = 0;
+          for (let i = 0; i < halfLen; i++) {
+            const delta = buf[i] - buf[i + tau];
+            diff += delta * delta;
+          }
+          runningSum += diff;
+          this.yinBuf[tau] = runningSum > 0 ? (diff * tau) / runningSum : 1;
+        }
+
+        // Guitar strings have richer harmonics, so allow slightly higher YIN threshold (0.18)
+        const threshold = isGuitar ? 0.18 : 0.14;
+        let tauEstimate = -1;
+        for (let tau = minTau; tau < maxTau; tau++) {
+          if (this.yinBuf[tau] < threshold) {
+            while (tau + 1 < maxTau && this.yinBuf[tau + 1] < this.yinBuf[tau]) tau++;
+            tauEstimate = tau;
+            break;
+          }
+        }
+
+        if (tauEstimate === -1) return null;
+
+        // Sub-octave check: ONLY jump up an octave if the half-period is MUCH cleaner
+        // (Prevents guitar 2nd harmonics from stealing the fundamental!)
+        const halfTau = Math.round(tauEstimate / 2);
+        const octaveRatio = isGuitar ? 0.65 : 1.35;
+        if (halfTau >= minTau && this.yinBuf[halfTau] < 0.15 && this.yinBuf[halfTau] <= this.yinBuf[tauEstimate] * octaveRatio) {
+          let refinedHalf = halfTau;
+          while (refinedHalf > minTau && this.yinBuf[refinedHalf - 1] < this.yinBuf[refinedHalf]) refinedHalf--;
+          while (refinedHalf + 1 < maxTau && this.yinBuf[refinedHalf + 1] < this.yinBuf[refinedHalf]) refinedHalf++;
+          tauEstimate = refinedHalf;
+        }
+
+        let betterTau = tauEstimate;
+        if (tauEstimate > 0 && tauEstimate < maxTau) {
+          const s0 = this.yinBuf[tauEstimate - 1];
+          const s1 = this.yinBuf[tauEstimate];
+          const s2 = this.yinBuf[tauEstimate + 1];
+          const denom = 2 * (2 * s1 - s2 - s0);
+          if (Math.abs(denom) > 1e-6) betterTau = tauEstimate + (s2 - s0) / denom;
+        }
+
+        const freq = sampleRate / betterTau;
+        const clarity = Math.max(0, Math.min(1, 1 - this.yinBuf[tauEstimate]));
+        if (clarity < 0.58 || freq < minFreq || freq > maxFreq) return null;
+
+        return { freq, clarity, rms };
+      }
+
+      // POLYPHONIC SPECTRAL CHORD DETECTOR (FFT + Harmonic Masking)
+      detectPolyphonicGuitar(timeBuf, freqBuf, sampleRate) {
+        const rms = this.computeRms(timeBuf);
+        if (rms < 0.006) return null;
+
+        const fftSize = this.analyser.fftSize;
+        const binHz = sampleRate / fftSize;
+        const minBin = Math.floor(70 / binHz);   // ~D2
+        const maxBin = Math.ceil(1200 / binHz);  // ~D6
+
+        // Convert dB magnitudes to linear energy & find dynamic noise floor
+        const mag = new Float32Array(maxBin + 4);
+        let maxDb = -160;
+        for (let i = minBin; i <= maxBin; i++) {
+          if (freqBuf[i] > maxDb) maxDb = freqBuf[i];
+        }
+        if (maxDb < -72) return null; // Too quiet
+
+        const dbFloor = Math.max(-78, maxDb - 26); // Keep peaks within 26dB of strongest string
+        for (let i = minBin - 2; i <= maxBin + 2; i++) {
+          const db = freqBuf[i];
+          mag[i] = db > dbFloor ? Math.pow(10, (db - dbFloor) / 20) : 0;
+        }
+
+        // Collect local spectral peaks with parabolic interpolation
+        const peaks = [];
+        for (let i = minBin; i <= maxBin; i++) {
+          if (mag[i] > 0 && mag[i] >= mag[i - 1] && mag[i] >= mag[i + 1]) {
+            const y0 = mag[i - 1], y1 = mag[i], y2 = mag[i + 1];
+            const denom = (y0 - 2 * y1 + y2);
+            const delta = Math.abs(denom) > 1e-6 ? 0.5 * (y0 - y2) / denom : 0;
+            const exactFreq = (i + delta) * binHz;
+            peaks.push({ freq: exactFreq, energy: y1, usedAsHarmonic: false });
+          }
+        }
+
+        if (peaks.length === 0) return null;
+
+        // Sort lowest frequency to highest so fundamentals are processed before their harmonics
+        peaks.sort((a, b) => a.freq - b.freq);
+
+        const fundamentals = [];
+        for (let i = 0; i < peaks.length; i++) {
+          const p = peaks[i];
+          if (p.usedAsHarmonic) continue;
+
+          fundamentals.push(p);
+
+          // Suppress integer harmonics (2x, 3x, 4x, 5x, 6x) of this fundamental
+          for (let h = 2; h <= 6; h++) {
+            const harmFreq = p.freq * h;
+            for (let j = i + 1; j < peaks.length; j++) {
+              // Within ±3.2% frequency tolerance (accounts for guitar string inharmonicity)
+              if (Math.abs(peaks[j].freq - harmFreq) / harmFreq < 0.032) {
+                // Only suppress if it's not dramatically louder than the fundamental
+                if (peaks[j].energy < p.energy * 1.65) {
+                  peaks[j].usedAsHarmonic = true;
+                }
+              }
+            }
+          }
+        }
+
+        // Keep top 5 strongest fundamentals (standard guitar voicing) and sort low-to-high
+        const topNotes = fundamentals
+          .sort((a, b) => b.energy - a.energy)
+          .slice(0, 5)
+          .sort((a, b) => a.freq - b.freq);
+
+        const midis = [];
+        const seen = new Set();
+        for (const note of topNotes) {
+          const m = Math.round(69 + 12 * Math.log2(note.freq / 440));
+          if (m >= 36 && m <= 88 && !seen.has(m)) {
+            seen.add(m);
+            midis.push(m);
+          }
+        }
+
+        if (midis.length === 0) return null;
+
+        const rootNote = topNotes[0];
+        const exactMidi = 69 + 12 * Math.log2(rootNote.freq / 440);
+        const cents = Math.round((exactMidi - Math.round(exactMidi)) * 100);
+        const clarity = Math.min(1, Math.max(0.4, (maxDb + 80) / 55));
+
+        return { midis, rootFreq: rootNote.freq, cents, clarity, rms };
+      }
+
+      loop() {
+        if (!this.isListening || !this.analyser) return;
+
+        const now = performance.now();
+        const sampleRate = synth.ctx ? synth.ctx.sampleRate : 44100;
+        const inputMode = document.getElementById('select-input-mode').value;
+        const gateMode = document.getElementById('select-capture-feel').value;
+        const baseHoldMs = gateMode === 'fast' ? 65 : gateMode === 'steady' ? 140 : 95;
+
+        this.analyser.getFloatTimeDomainData(this.timeDomainBuf);
+
+        let detectedMidis = null;
+        let displayFreq = 0;
+        let displayCents = 0;
+        let displayClarity = 0;
+        let currentRms = 0;
+
+        if (inputMode === 'guitar-chord') {
+          this.analyser.getFloatFrequencyData(this.freqDomainBuf);
+          const poly = this.detectPolyphonicGuitar(this.timeDomainBuf, this.freqDomainBuf, sampleRate);
+          if (poly) {
+            detectedMidis = poly.midis;
+            displayFreq = poly.rootFreq;
+            displayCents = poly.cents;
+            displayClarity = poly.clarity;
+            currentRms = poly.rms;
+          }
+        } else {
+          const isGuitar = inputMode === 'guitar-single';
+          const mono = this.detectYinPitch(this.timeDomainBuf, sampleRate, isGuitar);
+          if (mono) {
+            const exactMidi = 69 + 12 * Math.log2(mono.freq / 440);
+            const octaveShift = parseInt(document.getElementById('select-whistle-octave').value, 10) || 0;
+            const exactShifted = exactMidi + octaveShift;
+            const rounded = Math.max(21, Math.min(108, Math.round(exactShifted)));
+            detectedMidis = [rounded];
+            displayFreq = mono.freq;
+            displayCents = Math.round((exactShifted - rounded) * 100);
+            displayClarity = mono.clarity;
+            currentRms = mono.rms;
+          }
+        }
+
+        if (detectedMidis && detectedMidis.length > 0) {
+          this.silenceStartTime = null;
+
+          // Plucked string / syllable transient re-attack detection (sudden jump in RMS energy)
+          if (this.prevRms > 0.004 && currentRms > this.prevRms * 1.65 && currentRms > 0.014) {
+            this.hasReattackedSinceCommit = true;
+            this.peakRmsSinceCommit = currentRms;
+            this.minRmsSincePeak = currentRms;
+          }
+          if (currentRms > this.peakRmsSinceCommit) this.peakRmsSinceCommit = currentRms;
+          if (currentRms < this.minRmsSincePeak) this.minRmsSincePeak = currentRms;
+          if (
+            this.peakRmsSinceCommit > 0.015 &&
+            this.minRmsSincePeak < this.peakRmsSinceCommit * 0.48 &&
+            currentRms > this.minRmsSincePeak * 1.45
+          ) {
+            this.hasReattackedSinceCommit = true;
+            this.peakRmsSinceCommit = currentRms;
+            this.minRmsSincePeak = currentRms;
+          }
+          this.prevRms = currentRms;
+
+          const chordKey = detectedMidis.join(',');
+          this.updateTunerUI(detectedMidis, displayFreq, displayCents, true, displayClarity);
+
+          if (this.candidateChordKey !== chordKey) {
+            this.candidateChordKey = chordKey;
+            this.candidateMidis = detectedMidis;
+            this.candidateStartTime = now;
+          }
+
+          const heldMs = now - this.candidateStartTime;
+          // Chords need a slightly longer settle window (~125ms) so all strings finish being strummed
+          const requiredHoldMs = inputMode === 'guitar-chord' ? Math.max(baseHoldMs, 125) : baseHoldMs;
+
+          if (heldMs >= requiredHoldMs) {
+            this.setLiveKeyboardHighlight(detectedMidis);
+
+            if (this.monitorEnabled && this.lastMonitorKey !== chordKey) {
+              this.lastMonitorKey = chordKey;
+              synth.playNotes(detectedMidis, 0.28);
+            }
+
+            if (this.isRecording) {
+              const rearticulate = document.getElementById('chk-rearticulate-breath').checked;
+              const isNewPitch = chordKey !== this.lastCommittedKey;
+              const isStrumReattack = rearticulate && this.hasReattackedSinceCommit && chordKey === this.lastCommittedKey;
+
+              if (isNewPitch || isStrumReattack) {
+                this.capturedSteps.push([...detectedMidis]);
+                this.lastCommittedKey = chordKey;
+                this.hasReattackedSinceCommit = false;
+                this.peakRmsSinceCommit = currentRms;
+                this.minRmsSincePeak = currentRms;
+                this.renderCapturedPills();
+              }
+            }
+          }
+        } else {
+          this.prevRms = 0;
+          if (this.silenceStartTime === null) this.silenceStartTime = now;
+          if (now - this.silenceStartTime >= 65) {
+            this.candidateChordKey = null;
+            this.candidateMidis = [];
+            this.candidateStartTime = now;
+            this.hasReattackedSinceCommit = true;
+            this.peakRmsSinceCommit = 0;
+            this.minRmsSincePeak = 1;
+            this.lastMonitorKey = null;
+            this.setLiveKeyboardHighlight([]);
+            this.updateTunerUI(null, 0, 0, false, 0);
+          }
+        }
+
+        this.rafId = requestAnimationFrame(() => this.loop());
+      }
+
+      updateTunerUI(midis, freq, cents, locked, clarity = 0) {
+        const noteNameEl = document.getElementById('tuner-note-name');
+        const freqEl = document.getElementById('tuner-freq-hz');
+        const noteBox = document.getElementById('tuner-note-box');
+        const centsLabel = document.getElementById('tuner-cents-label');
+        const needle = document.getElementById('tuner-needle');
+        const sigBar = document.getElementById('tuner-signal-bar');
+        const clarityText = document.getElementById('tuner-clarity-text');
+
+        if (!locked || !midis || midis.length === 0) {
+          noteNameEl.textContent = '--';
+          noteNameEl.className = 'font-mono text-xl font-bold text-zinc-500 leading-none';
+          freqEl.textContent = '0.0 Hz';
+          noteBox.className = 'w-16 h-14 rounded-xl bg-[#0b0d10] border border-zinc-700/90 flex flex-col items-center justify-center shrink-0 transition-colors';
+          centsLabel.textContent = this.isRecording ? 'LISTENING...' : (this.isListening ? 'TUNER READY' : 'TUNER STANDBY');
+          centsLabel.className = 'text-zinc-400 font-bold';
+          needle.style.left = '50%';
+          needle.className = 'absolute top-0.5 bottom-0.5 w-2.5 -translate-x-1/2 rounded-full bg-zinc-600 transition-[left] duration-75';
+          sigBar.style.width = '0%';
+          clarityText.textContent = '0%';
+          return;
+        }
+
+        const inTune = Math.abs(cents) <= 12;
+        const pct = Math.max(5, Math.min(95, 50 + cents));
+        const clarityPct = Math.round(clarity * 100);
+
+        if (midis.length === 1) {
+          noteNameEl.textContent = midiToNoteName(midis[0]);
+          noteNameEl.className = `font-mono text-xl font-bold leading-none ${inTune ? 'text-emerald-300' : 'text-amber-300'}`;
+        } else {
+          noteNameEl.textContent = `${midiToNoteName(midis[0])}+${midis.length - 1}`;
+          noteNameEl.className = 'font-mono text-sm font-bold leading-none text-sky-300';
+        }
+
+        freqEl.textContent = `${freq.toFixed(1)} Hz`;
+        noteBox.className = `w-16 h-14 rounded-xl bg-[#0b0d10] border flex flex-col items-center justify-center shrink-0 transition-colors ${
+          inTune ? 'border-emerald-500/80 shadow-[0_0_16px_rgba(16,185,129,0.25)]' : 'border-amber-500/60'
+        }`;
+
+        const sign = cents > 0 ? '+' : '';
+        centsLabel.textContent = midis.length > 1
+          ? `CHORD (${midis.map(m => midiToNoteName(m)).join(' ')})`
+          : (inTune ? `LOCKED (${sign}${cents}c)` : `${sign}${cents}c`);
+        centsLabel.className = inTune ? 'text-emerald-400 font-bold' : 'text-amber-300 font-bold';
+
+        needle.style.left = `${pct}%`;
+        needle.className = `absolute top-0.5 bottom-0.5 w-2.5 -translate-x-1/2 rounded-full transition-[left] duration-75 ${
+          inTune ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]' : 'bg-amber-400'
+        }`;
+
+        sigBar.style.width = `${clarityPct}%`;
+        clarityText.textContent = `${clarityPct}%`;
+      }
+
+      setLiveKeyboardHighlight(midis) {
+        const activeSet = new Set(midis || []);
+        state.liveTunerMidis = midis || [];
+
+        document.querySelectorAll('#cropped-keyboard [data-midi]').forEach(keyEl => {
+          const kMidi = parseInt(keyEl.getAttribute('data-midi'), 10);
+          keyEl.classList.toggle('live-tuner-note', activeSet.has(kMidi));
+        });
+
+        renderBirdsEyeStrip();
+      }
+
+      renderCapturedPills() {
+        const host = document.getElementById('whistle-captured-pills');
+        const useBtn = document.getElementById('btn-mic-use-pattern');
+
+        if (this.capturedSteps.length === 0) {
+          host.innerHTML = `<span class="font-mono text-xs text-zinc-600 italic">Click PLAY &amp; RECORD and strum guitar chords or play single notes...</span>`;
+          useBtn.classList.add('hidden');
+          return;
+        }
+
+        useBtn.classList.remove('hidden');
+        host.innerHTML = this.capturedSteps.map((stepMidis, idx) => {
+          const label = stepMidis.map(m => midiToNoteName(m)).join('+');
+          return `
+            <button type="button" data-remove-idx="${idx}" title="Click to remove this step" class="group px-2 py-0.5 rounded bg-emerald-500/15 hover:bg-rose-500/20 border border-emerald-500/45 hover:border-rose-500/60 text-emerald-300 hover:text-rose-200 font-mono text-xs font-bold flex items-center gap-1 transition cursor-pointer">
+              <span class="text-[9px] text-emerald-500 group-hover:text-rose-400">${idx + 1}.</span>${label}
+              <span class="text-[10px] text-emerald-500/70 group-hover:text-rose-300 ml-0.5">&times;</span>
+            </button>
+          `;
+        }).join('<span class="text-zinc-600 font-mono text-xs">&rarr;</span>');
+
+        host.querySelectorAll('[data-remove-idx]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const idx = parseInt(btn.getAttribute('data-remove-idx'), 10);
+            this.capturedSteps.splice(idx, 1);
+            this.lastCommittedKey = this.capturedSteps.length > 0
+              ? this.capturedSteps[this.capturedSteps.length - 1].join(',')
+              : null;
+            this.renderCapturedPills();
+          });
+        });
+      }
+
+      async startRecording() {
+        synth.stopPatternPlayback();
+        const ok = await this.startMic();
+        if (!ok) return;
+
+        this.isRecording = true;
+        this.capturedSteps = [];
+        this.candidateChordKey = null;
+        this.candidateMidis = [];
+        this.candidateStartTime = performance.now();
+        this.silenceStartTime = null;
+        this.lastCommittedKey = null;
+        this.hasReattackedSinceCommit = true;
+        this.peakRmsSinceCommit = 0;
+        this.minRmsSincePeak = 1;
+        this.renderCapturedPills();
+
+        const btn = document.getElementById('btn-mic-record');
+        btn.className = 'px-4 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 border border-rose-400 text-white font-mono text-xs font-bold flex items-center gap-2 shadow-[0_0_18px_rgba(244,63,94,0.45)] transition cursor-pointer';
+        document.getElementById('rec-dot').className = 'w-2.5 h-2.5 rounded-full bg-white animate-ping';
+        document.getElementById('rec-btn-label').textContent = 'STOP & TRANSLATE';
+        document.getElementById('mic-status-hint').textContent = 'RECORDING — strum chords or play single notes, then click STOP & TRANSLATE.';
+      }
+
+      async stopRecording(autoTranslate = true) {
+        if (this.isRecording && this.candidateMidis.length > 0 && (performance.now() - this.candidateStartTime) >= 75) {
+          if (this.candidateChordKey !== this.lastCommittedKey || this.hasReattackedSinceCommit) {
+            this.capturedSteps.push([...this.candidateMidis]);
+            this.lastCommittedKey = this.candidateChordKey;
+            this.renderCapturedPills();
+          }
+        }
+
+        this.isRecording = false;
+
+        const btn = document.getElementById('btn-mic-record');
+        btn.className = 'px-4 py-2.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/60 text-rose-200 font-mono text-xs font-bold flex items-center gap-2 transition cursor-pointer';
+        document.getElementById('rec-dot').className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
+        document.getElementById('rec-btn-label').textContent = 'PLAY & RECORD';
+        document.getElementById('mic-status-hint').textContent = 'Play guitar or whistle into your mic — tuner locks pitch in real time.';
+
+        if (autoTranslate) {
+          if (this.capturedSteps.length > 0) {
+            await this.translateCapturedToKeyboard(true);
+          } else {
+            document.getElementById('status-line').textContent =
+              'No notes captured during recording — play closer to the mic and try again.';
+          }
+        }
+      }
+
+      async translateCapturedToKeyboard(autoPlay = true) {
+        if (this.capturedSteps.length === 0) return;
+
+        state.auditionEnabled = true;
+        document.getElementById('tone-label').textContent = 'TONE: ON';
+        document.getElementById('tone-led').className = 'w-2 h-2 rounded-full bg-amber-400';
+        document.getElementById('btn-toggle-tone').className = 'px-3 py-2.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/50 text-amber-300 font-mono text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer';
+        await synth.ensureContext();
+
+        const steps = this.capturedSteps.map(group => group.map(m => midiToNoteName(m)));
+        const flatMidis = this.capturedSteps.flat();
+        const { scale, rootMidi } = inferScaleAndRoot(flatMidis);
+
+        loadPattern({
+          title: `Captured Guitar / Melody (${steps.length} Steps)`,
+          scale,
+          rootNote: midiToNoteName(rootMidi),
+          steps
+        });
+
+        document.getElementById('status-line').textContent =
+          `Translated ${steps.length} captured step${steps.length > 1 ? 's' : ''} (${scale}) onto the cropped keyboard.`;
+
+        if (autoPlay) await synth.playSequenceOnce(420);
+      }
+
+      clearCaptured() {
+        synth.stopPatternPlayback();
+        this.capturedSteps = [];
+        this.candidateChordKey = null;
+        this.candidateMidis = [];
+        this.lastCommittedKey = null;
+        this.hasReattackedSinceCommit = true;
+        this.peakRmsSinceCommit = 0;
+        this.minRmsSincePeak = 1;
+        this.renderCapturedPills();
+        loadPattern(EMPTY_PATTERN);
+        document.getElementById('status-line').textContent =
+          'Cleared captured notes and reset the keyboard snapshot.';
+      }
+    }
+
+    const whistleTuner = new WhistleTunerRecorder();
+
+    // =========================================================================
+    // 6. EVENT LISTENERS & INITIALIZATION
+    // =========================================================================
+    document.getElementById('select-input-mode').addEventListener('change', (e) => {
+      const octSelect = document.getElementById('select-whistle-octave');
+      if (e.target.value.startsWith('guitar')) {
+        octSelect.value = '0';
+      } else {
+        octSelect.value = '-12';
+      }
+    });
+
+    document.getElementById('btn-toggle-tone').addEventListener('click', async () => {
+      state.auditionEnabled = !state.auditionEnabled;
+      const label = document.getElementById('tone-label');
+      const led = document.getElementById('tone-led');
+      const btn = document.getElementById('btn-toggle-tone');
+      if (state.auditionEnabled) {
+        await synth.ensureContext();
+        label.textContent = 'TONE: ON';
+        led.className = 'w-2 h-2 rounded-full bg-amber-400';
+        btn.className = 'px-3 py-2.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/50 text-amber-300 font-mono text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer';
+      } else {
+        synth.stopPatternPlayback();
+        label.textContent = 'TONE: OFF';
+        led.className = 'w-2 h-2 rounded-full bg-zinc-500';
+        btn.className = 'px-3 py-2.5 rounded-lg bg-[#1c2028] hover:bg-zinc-800 border border-zinc-700 text-zinc-400 font-mono text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer';
+      }
+    });
+
+    document.getElementById('btn-mic-clear').addEventListener('click', () => {
+      whistleTuner.clearCaptured();
+    });
+
+    document.getElementById('btn-mic-monitor').addEventListener('click', async () => {
+      whistleTuner.monitorEnabled = !whistleTuner.monitorEnabled;
+      const btn = document.getElementById('btn-mic-monitor');
+      if (whistleTuner.monitorEnabled) {
+        await synth.ensureContext();
+        await whistleTuner.startMic();
+        btn.textContent = 'MONITOR: ON';
+        btn.className = 'px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 font-mono text-[10px] transition cursor-pointer';
+      } else {
+        btn.textContent = 'MONITOR: OFF';
+        btn.className = 'px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-400 font-mono text-[10px] transition cursor-pointer';
+      }
+    });
+
+    document.getElementById('btn-mic-record').addEventListener('click', async () => {
+      if (whistleTuner.isRecording) {
+        await whistleTuner.stopRecording(true);
+      } else {
+        await whistleTuner.startRecording();
+      }
+    });
+
+    document.getElementById('btn-mic-tuner-only').addEventListener('click', async () => {
+      await whistleTuner.startMic();
+    });
+
+    document.getElementById('btn-mic-use-pattern').addEventListener('click', async () => {
+      if (whistleTuner.isRecording) {
+        await whistleTuner.stopRecording(true);
+      } else {
+        await whistleTuner.translateCapturedToKeyboard(true);
+      }
+    });
+
+    document.getElementById('btn-toggle-birdseye').addEventListener('click', () => {
+      state.birdseyeMode = state.birdseyeMode === '61' ? '88' : '61';
+      renderBirdsEyeStrip();
+    });
+
+    document.getElementById('btn-play-pattern').addEventListener('click', async () => {
+      if (synth.isPlayingPattern) {
+        synth.stopPatternPlayback();
+      } else {
+        await synth.playSequenceOnce(420);
+      }
+    });
+
+    document.getElementById('btn-step-next').addEventListener('click', () => {
+      synth.stopPatternPlayback();
+      if (state.stepNotes.length === 0) return;
+      state.activeStepIndex = (state.activeStepIndex + 1) % state.stepNotes.length;
+      highlightCurrentStep(true);
+    });
+
+    document.getElementById('btn-step-reset').addEventListener('click', () => {
+      synth.stopPatternPlayback();
+      if (state.stepNotes.length === 0) return;
+      state.activeStepIndex = 0;
+      highlightCurrentStep(true);
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+      if (state.stepNotes.length === 0) return;
+      if (e.code === 'Space' || e.code === 'ArrowRight') {
+        e.preventDefault();
+        synth.stopPatternPlayback();
+        state.activeStepIndex = (state.activeStepIndex + 1) % state.stepNotes.length;
+        highlightCurrentStep(true);
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        synth.stopPatternPlayback();
+        state.activeStepIndex = (state.activeStepIndex - 1 + state.stepNotes.length) % state.stepNotes.length;
+        highlightCurrentStep(true);
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        synth.stopPatternPlayback();
+        state.activeStepIndex = 0;
+        highlightCurrentStep(true);
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadPattern(STARTER_MOTIF);
+    });
+  </script>
+</body>
+</html>
